@@ -86,3 +86,98 @@ Point Anomaly Detector                                  Scenario Classifier
              │                       │                       │
              ▼                       ▼                       ▼
       [ LOG TO DB ]         [ DISPATCH TECHNICIAN ]    [ QUARANTINE DATA ]
+```
+
+### System Architecture
+
+**Stage 1 — Data Ingestion & Preprocessing**
+
+- Raw AWS Telemetry (Temp, RH, Pres — 24h Window)
+- Leakage-Free Imputation (Train-fitted median fill)
+
+**Stage 2 — Dual-Channel ML Execution**
+
+- **Channel A (Point Anomaly Detector):** Rolling MAD Bounds, Isolation Forest, Domain Rules Engine  Outputs 
+- **Channel B (Scenario Classifier):** 504 Aggregated Features, Zero Calendar Leakage, Frozen XGBoost V2  Outputs  & 
+
+**Stage 3 — Decision Arbitration Gate**
+
+- **High-Confidence Bypass:** If  Accept 
+- **Point Confirmation:** If  &  is True  Accept 
+- **False Alarm Suppression:** If  &  is False  Force Output to NORMAL
+
+**Stage 4 — Action, Dispatch & UI**
+
+- NORMAL  Log to Database
+- STUCK / MISSING  Dispatch Technician
+- BIAS / DRIFT  Quarantine Data
+
+### Operational Use Cases
+
+- **Preserving Genuine Extreme Weather Data:** During rapid temperature drops or pressure instability, Channel A flags a point anomaly, but Channel B recognizes the correlated shifts across sensors and outputs normal with high confidence. The Arbitrator suppresses Channel A's warning, preserving vital storm data.
+- **Detecting the Invisible Flatline:** If a damaged sensor transmits a constant physically valid value (e.g., 3.2 m/s) for a day, Channel A sees no outliers. Channel B finds a 24-hour variance of 0.0 and outputs `stuck_sensor` with 98% confidence, utilizing the High-Confidence Bypass to quarantine the fault.
+- **Automated Role-Based Dispatch:** Confirmed faults interface with network operations via Role-Based Access Control (RBAC). The system generates a geospatial maintenance ticket for Field Technicians and a digital quarantine flag for Data Analysts.
+
+### Benchmark Performance & Evaluation
+
+Tested out-of-sample on held-out 24-hour test scenarios:
+
+| Metric             | Serial Cascade Baseline | SkyGuard AI Arbitrated |
+| ------------------ | ----------------------- | ---------------------- |
+| **Test Accuracy**  | 43.33%                  | **76.67%**             |
+| **Macro F1-Score** | 48.12%                  | **77.62%**             |
+| **Normal Recall**  | 30.00%                  | **80.00%**             |
+
+### Technology Stack
+
+- **Machine Learning Core:** Python 3.10+, XGBoost V2 (Frozen Model Core), Scikit-Learn (Isolation Forest Ensemble), Pandas & NumPy (504 Statistical Window Aggregations)
+- **Backend Microservice:** FastAPI (Asynchronous REST API service), Uvicorn (High-performance ASGI web server), Pydantic (Strictly-typed telemetry ingestion models)
+- **Frontend Dashboard:** React 18 & Vite, Tailwind CSS, Plotly.js & Lucide React
+
+### Quickstart Guide
+
+**1. Setup Virtual Environment**
+
+Bash
+
+```bash
+git clone https://github.com/NeuroCodex/SIH_SOLUTION_73.git
+cd SIH_SOLUTION_73
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+```
+**2. Start Backend Service**
+
+Bash
+
+```
+
+uvicorn Backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+```
+
+**3. Start Frontend Application**
+
+Bash
+
+```
+
+cd frontend
+npm install
+npm run dev
+
+```
+
+### Prototype Demonstration
+
+**1. Dashboard Overview** Telemetry operational health, total processed records, anomaly rate, and fault classification distribution. *<img width="1535" height="862" alt="Screenshot 2026-09-30 140159" src="https://github.com/user-attachments/assets/0b153357-68a6-4839-b65e-81aae8012966" />
+*
+
+**2. Model Architecture & Pipeline Flow** The four-stage processing pipeline showing parallel ML execution and the Decision Arbitration Gate. *<img width="1535" height="848" alt="Screenshot 2026-09-30 140238" src="https://github.com/user-attachments/assets/a49594bb-bed4-467e-b9b6-b7b547801670" />
+*
+
+**3. Diagnostic Pipeline & Arbitration Analysis** Held-out scenario evaluation logs demonstrating High-Confidence Bypass and False Alarm Suppression. *<img width="1535" height="857" alt="Screenshot 2026-09-30 140259" src="https://github.com/user-attachments/assets/5b95394c-707c-4d9c-81f9-4e3891aedaf4" />
+*
+```
