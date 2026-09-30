@@ -36,12 +36,53 @@ SkyGuard AI replaces the serial cascade with two concurrent pipelines and a term
 # System Architecture
 
 ```text
-Raw AWS Telemetry (Temp, RH, Surface Pressure)
-                        ↓
-Stage 1 — Data Ingestion & Leakage-Free Preprocessing
-                        ↓
-Stage 2 — Dual-Channel ML Execution (Channel A ∥ Channel B)
-                        ↓
-Stage 3 — Decision Arbitration Gate
-                        ↓
-Stage 4 — Action, Dispatch & UI Presentation
+=========================================================================
+                 STAGE 1: DATA INGESTION & PREPROCESSING
+=========================================================================
+                           [ RAW AWS TELEMETRY ]
+                       (Temp, RH, Pres — 24h Window)
+                                     │
+                                     ▼
+                       [ LEAKAGE-FREE IMPUTATION ]
+                        (Train-fitted median fill)
+                                     │
+=========================================================================
+                 STAGE 2: DUAL-CHANNEL ML EXECUTION
+=========================================================================
+         ┌───────────────────────────┴───────────────────────────┐
+         ▼                                                       ▼
+   [ CHANNEL A ]                                           [ CHANNEL B ]
+Point Anomaly Detector                                  Scenario Classifier
+         │                                                       │
+• Rolling MAD Bounds                                    • 504 Aggregated Features
+• Isolation Forest                                      • Zero Calendar Leakage
+• Domain Rules Engine                                   • Frozen XGBoost V2
+         │                                                       │
+         ▼                                                       ▼
+[ S_det (True/False) ]                                 [ y_rc & Confidence C_rc ]
+         │                                                       │
+=========================================================================
+                 STAGE 3: DECISION ARBITRATION GATE
+=========================================================================
+         └───────────────────────────┬───────────────────────────┘
+                                     ▼
+             ┌───────────────────────┼───────────────────────┐
+             ▼                       ▼                       ▼
+       [ C_rc >= 0.50 ]      [ C_rc < 0.50 & S_det ]  [ C_rc < 0.50 & !S_det ]
+     High-Confidence Bypass     Point Confirmation      False Alarm Suppression
+             │                       │                       │
+             ▼                       ▼                       ▼
+          [ y_rc ]                [ y_rc ]               [ NORMAL ]
+                                     │
+=========================================================================
+                 STAGE 4: ACTION, DISPATCH & UI
+=========================================================================
+                                     ▼
+                       [ FINAL ARBITRATED DIAGNOSIS ]
+                                     │
+             ┌───────────────────────┼───────────────────────┐
+             ▼                       ▼                       ▼
+        [ NORMAL ]              [ STUCK / MISSING ]       [ BIAS / DRIFT ]
+             │                       │                       │
+             ▼                       ▼                       ▼
+      [ LOG TO DB ]         [ DISPATCH TECHNICIAN ]    [ QUARANTINE DATA ]
