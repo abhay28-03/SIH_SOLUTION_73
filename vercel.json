@@ -1,0 +1,94 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "./",
+      "entrypoint": "api/index.py",
+      "framework": "fastapi"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/stats",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/analysis/run",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/data/upload",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/anomaly/results",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/classification/results",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/results",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/scenarios",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/scenarios/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/docs",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/openapi.json",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}
